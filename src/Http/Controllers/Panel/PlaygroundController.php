@@ -20,7 +20,8 @@ class PlaygroundController extends PanelController
     {
         $agent = $this->findAgent($request, $agent);
 
-        return $this->chat($request, $agent, $this->sessionKey($agent->uuid), 'playground', withTokenUsage: true);
+        // no playground a regra é só o "Aceita arquivos" do agente
+        return $this->chat($request, $agent, $this->sessionKey($agent->uuid), 'playground', withTokenUsage: true, filesAllowed: true);
     }
 
     public function reset(Request $request, string $agent): JsonResponse

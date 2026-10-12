@@ -125,6 +125,21 @@ return [
         'max_length' => 4000,
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Arquivos anexados no chat (playground e widget com a prop "files")
+    |--------------------------------------------------------------------------
+    | Só valem para agentes com "Aceita arquivos" marcado. São enviados ao
+    | serviço em base64: [{filename, mime_type, file}].
+    */
+
+    'files' => [
+        'max_files' => 5,
+        // por arquivo
+        'max_size_kb' => 10240,
+        'mimes' => ['pdf', 'png', 'jpg', 'jpeg', 'webp', 'txt', 'csv', 'docx', 'xlsx'],
+    ],
+
     'assets' => [
         // false se o projeto já carrega o Alpine.js
         'load_alpine' => true,

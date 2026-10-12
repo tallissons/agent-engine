@@ -21,6 +21,7 @@
         :endpoint="route('agent-engine.panel.playground.send', $agent->uuid)"
         :reset-endpoint="route('agent-engine.panel.playground.reset', $agent->uuid)"
         :show-tokens="true"
+        :files="true"
         :with-assets="false"
     />
 @endsection

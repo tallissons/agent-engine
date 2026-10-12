@@ -26,6 +26,8 @@ class WidgetController extends Controller
             AgentEngine::find($token['agent']),
             $this->sessionKey($token['agent']),
             $token['reference'] ?? '',
+            // vem do token criptografado: o HTML do cliente não consegue ativar
+            filesAllowed: (bool) ($token['files'] ?? false),
         );
     }
 

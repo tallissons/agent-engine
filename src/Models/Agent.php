@@ -27,6 +27,7 @@ use Illuminate\Support\Str;
  * @property array|null $response_schema
  * @property string|null $webhook_url
  * @property bool $is_active
+ * @property bool $allow_files
  * @property-read AgentApiKey|null $apiKey
  * @property-read \Illuminate\Database\Eloquent\Collection<int, AgentTool> $tools
  * @property-read \Illuminate\Database\Eloquent\Collection<int, Agent> $subagents
@@ -40,6 +41,7 @@ class Agent extends Model
 
     protected $attributes = [
         'is_active' => true,
+        'allow_files' => false,
     ];
 
     protected $casts = [
@@ -49,6 +51,7 @@ class Agent extends Model
         'top_k' => 'integer',
         'response_schema' => 'array',
         'is_active' => 'boolean',
+        'allow_files' => 'boolean',
     ];
 
     protected static function booted(): void

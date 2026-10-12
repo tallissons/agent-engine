@@ -16,6 +16,7 @@ class AgentRequest extends FormRequest
     {
         $this->merge([
             'is_active' => $this->boolean('is_active'),
+            'allow_files' => $this->boolean('allow_files'),
             'tools' => array_values($this->input('tools', [])),
             'subagents' => array_values($this->input('subagents', [])),
         ]);
@@ -38,6 +39,7 @@ class AgentRequest extends FormRequest
             'response_schema' => ['nullable', 'json'],
             'webhook_url' => ['nullable', 'url', 'max:255'],
             'is_active' => ['boolean'],
+            'allow_files' => ['boolean'],
             'tools' => ['array'],
             'tools.*.tool_slug' => array_filter(['required', 'string', 'max:255', $catalog ? Rule::in($catalog) : null]),
             'tools.*.name' => ['required', 'string', 'max:255'],

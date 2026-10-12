@@ -15,37 +15,56 @@
             input: '',
             loading: false,
             messages: [],
+            files: [],
 
-            async request(url, body) {
+            async request(url, fields, files = []) {
+                const body = new FormData();
+
+                if (config.token) body.append('token', config.token);
+                Object.entries(fields).forEach(([key, value]) => body.append(key, value));
+                files.forEach(file => body.append('files[]', file));
+
                 const response = await fetch(url, {
                     method: 'POST',
                     credentials: 'same-origin',
                     headers: {
-                        'Content-Type': 'application/json',
                         'Accept': 'application/json',
                         'X-Requested-With': 'XMLHttpRequest',
                         'X-CSRF-TOKEN': config.csrf,
                     },
-                    body: JSON.stringify(Object.assign({ token: config.token }, body)),
+                    body,
                 });
 
                 return { ok: response.ok, data: await response.json().catch(() => ({})) };
             },
 
+            canSend() {
+                return !this.loading && (this.input.trim() !== '' || this.files.length > 0);
+            },
+
+            pickFiles(event) {
+                const room = config.maxFiles - this.files.length;
+                this.files.push(...Array.from(event.target.files).slice(0, Math.max(room, 0)));
+                event.target.value = '';
+            },
+
             async send() {
                 const text = this.input.trim();
+                // FormData exige o File original, não o Proxy reativo do Alpine
+                const files = this.files.map(file => (window.Alpine && Alpine.raw) ? Alpine.raw(file) : file);
 
-                if (!text || this.loading) {
+                if (!this.canSend()) {
                     return;
                 }
 
-                this.messages.push({ role: 'user', text });
+                this.messages.push({ role: 'user', text, files: files.map(file => file.name) });
                 this.input = '';
+                this.files = [];
                 this.loading = true;
                 this.scroll();
 
                 try {
-                    const { ok, data } = await this.request(config.endpoint, { message: text });
+                    const { ok, data } = await this.request(config.endpoint, { message: text }, files);
 
                     if (!ok || data.error) {
                         this.messages.push({ role: 'assistant', error: true, text: data.error || data.message || config.errorMessage });
@@ -69,6 +88,7 @@
             async reset() {
                 await this.request(config.resetEndpoint, {}).catch(() => null);
                 this.messages = [];
+                this.files = [];
             },
 
             keydown(event) {
@@ -114,7 +134,12 @@
                     }">
                     <div class="ae-bubble">
                         <template x-if="message.json"><pre x-text="message.text"></pre></template>
-                        <template x-if="!message.json"><span x-text="message.text"></span></template>
+                        <template x-if="!message.json && message.text"><span x-text="message.text"></span></template>
+                        <template x-if="message.files && message.files.length">
+                            <ul class="ae-msg-files">
+                                <template x-for="name in message.files"><li x-text="name"></li></template>
+                            </ul>
+                        </template>
                     </div>
                     <span class="ae-msg-meta" x-show="message.tokens" x-text="message.tokens + ' ' + {{ \Illuminate\Support\Js::from(__('agent-engine::ui.tokens')) }}"></span>
                 </div>
@@ -125,10 +150,30 @@
             </div>
         </div>
 
+        @if ($allowFiles)
+            <ul class="ae-chips" x-show="files.length" x-cloak>
+                <template x-for="(file, index) in files" :key="index">
+                    <li class="ae-chip">
+                        <span x-text="file.name"></span>
+                        <button type="button" @click="files.splice(index, 1)" aria-label="{{ __('agent-engine::ui.remove_file') }}">×</button>
+                    </li>
+                </template>
+            </ul>
+        @endif
+
         <form class="ae-chat-form" @submit.prevent="send()">
+            @if ($allowFiles)
+                <input type="file" x-ref="file" multiple accept="{{ $accept }}" hidden @change="pickFiles($event)">
+                <button type="button" class="ae-attach" @click="$refs.file.click()" :disabled="loading || files.length >= {{ (int) $config['maxFiles'] }}"
+                        title="{{ __('agent-engine::ui.attach') }}" aria-label="{{ __('agent-engine::ui.attach') }}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+                    </svg>
+                </button>
+            @endif
             <textarea x-ref="input" x-model="input" @keydown="keydown($event)" rows="1"
                       placeholder="{{ $placeholder }}" aria-label="{{ $placeholder }}"></textarea>
-            <button type="submit" class="ae-btn ae-btn-primary" :disabled="loading || !input.trim()">
+            <button type="submit" class="ae-btn ae-btn-primary" :disabled="!canSend()">
                 {{ __('agent-engine::ui.send') }}
             </button>
         </form>

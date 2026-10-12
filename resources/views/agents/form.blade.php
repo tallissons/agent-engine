@@ -54,10 +54,14 @@
                     <input class="ae-input" id="ae-name" name="name" value="{{ old('name', $agent->name) }}" required maxlength="255">
                     @error('name') <div class="ae-error">{{ $message }}</div> @enderror
                 </div>
-                <div class="ae-col-6" style="display:flex;align-items:flex-end">
+                <div class="ae-col-6" style="display:flex;flex-direction:column;justify-content:flex-end;gap:6px">
                     <label class="ae-check">
                         <input type="checkbox" name="is_active" value="1" @checked(old('is_active', $agent->is_active ?? true))>
                         {{ __('agent-engine::ui.is_active') }}
+                    </label>
+                    <label class="ae-check" title="{{ __('agent-engine::ui.allow_files_help') }}">
+                        <input type="checkbox" name="allow_files" value="1" @checked(old('allow_files', $agent->allow_files))>
+                        {{ __('agent-engine::ui.allow_files') }}
                     </label>
                 </div>
                 <div class="ae-col-12">

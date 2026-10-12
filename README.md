@@ -158,6 +158,31 @@ Coloque o componente em qualquer view Blade:
 | `floating` | `false` | botão flutuante que abre o chat |
 | `height` | `480px` | altura do chat |
 | `reference` | `null` | enviado como `external_reference` |
+| `files` | `false` | permite anexar arquivos (o agente também precisa de "Aceita arquivos") |
+
+### Arquivos no chat
+
+Marque **Aceita arquivos** no cadastro do agente. A partir daí:
+- **Chat de teste:** o botão de anexar aparece no playground do painel.
+- **Widget:** o botão só aparece se o componente também tiver a opção `files`, por exemplo `<x-agent-engine::chat :agent="$agent" files />`. A permissão viaja dentro do token criptografado, então alterar o HTML não libera o envio.
+
+Os arquivos vão ao serviço em base64, no campo `files`:
+
+```json
+"files": [{ "filename": "contrato.pdf", "mime_type": "application/pdf", "file": "<base64>" }]
+```
+
+Os limites ficam em `config('agent-engine.files')`: `max_files` (padrão 5), `max_size_kb` por arquivo (padrão 10 MB) e `mimes` (extensões aceitas). Dá para enviar só o arquivo, sem texto.
+
+Pelo backend, use o mesmo formato com `FileEncoder`:
+
+```php
+use BuildAgents\AgentEngine\Support\FileEncoder;
+
+AgentEngine::run($agent, 'Resuma', $sessionId, new RunOptions(files: FileEncoder::encode($request->file('files', []))));
+```
+
+Lembre de ajustar `upload_max_filesize` e `post_max_size` no PHP se os arquivos forem grandes.
 
 Como o widget funciona:
 - **Segurança:** o componente gera um token criptografado com o uuid do agente, e o endpoint (`POST /agent-engine/chat/send`) só aceita esse token. Ninguém consegue chamar outros agentes pelo uuid.

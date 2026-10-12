@@ -46,6 +46,8 @@ return [
     'webhook_url' => 'Webhook URL',
     'webhook_url_help' => 'Optional. With a URL, runs become asynchronous and the result is sent here.',
     'is_active' => 'Active agent',
+    'allow_files' => 'Accepts files',
+    'allow_files_help' => 'Allows attaching files in the test chat and in widgets with the "files" option.',
 
     'tools' => 'Tools',
     'add_tool' => 'Add tool',
@@ -84,4 +86,7 @@ return [
     'close_chat' => 'Close chat',
     'tokens' => 'tokens',
     'thinking' => 'Thinking...',
+    'attach' => 'Attach file',
+    'remove_file' => 'Remove file',
+    'files_not_allowed' => 'This agent does not accept files.',
 ];
