@@ -42,6 +42,7 @@ AGENT_ENGINE_INSTRUCTION_SUFFIX=   # texto anexado à instrução (opcional)
 
 # respostas assíncronas (modo webhook)
 AGENT_ENGINE_WEBHOOK_SECRET=um-segredo-longo
+AGENT_ENGINE_WEBHOOK_FORWARD=false # true repassa o resultado ao webhook_url do agente
 ```
 
 ## Tabelas
@@ -101,7 +102,78 @@ return $result->toArray(); // mesmo formato do antigo AgentService::generate()
 ### Modo de resposta
 
 - **sync**: usado quando `sync: true`, quando o agente não tem `webhook_url` ou quando o webhook está desativado.
-- **webhook**: nos demais casos. O serviço chama `POST /agent-engine/webhook/{secret}`. O pacote então dispara os eventos e repassa o resultado ao `webhook_url` do agente por meio do job `ForwardToAgentWebhook`, que roda na fila configurada.
+- **webhook**: nos demais casos. O serviço chama `POST /agent-engine/webhook/{secret}` e o pacote dispara `AgentWebhookReceived` e depois `AgentCompleted` ou `AgentFailed`. Trate o resultado num listener desses eventos.
+
+Por padrão o pacote **não** envia nada ao `webhook_url` do agente. Com `AGENT_ENGINE_WEBHOOK_FORWARD=true`, o job `ForwardToAgentWebhook` envia ao `webhook_url`, pela fila configurada, todos os retornos do webhook e as respostas síncronas com conteúdo.
+
+### Enviando o resultado você mesmo
+
+Com o repasse automático desligado, escute `AgentCompleted` e `AgentFailed`, monte os dados como quiser e envie:
+
+```php
+namespace App\Listeners;
+
+use BuildAgents\AgentEngine\Events\AgentCompleted;
+use BuildAgents\AgentEngine\Events\AgentFailed;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Support\Facades\Http;
+
+class SendAgentResult implements ShouldQueue
+{
+    public int $tries = 3;
+
+    public array $backoff = [10, 60, 300];
+
+    public function handle(AgentCompleted|AgentFailed $event): void
+    {
+        // só os retornos assíncronos; respostas sync já vêm no retorno do run()
+        if (! $event->viaWebhook || ! $event->agent->webhook_url) {
+            return;
+        }
+
+        $result = $event->result;
+
+        Http::timeout(30)
+            ->withToken(config('services.cliente.token'))
+            ->post($event->agent->webhook_url, [
+                'pedido' => $result->externalReference,
+                'sessao' => $result->sessionId,
+                'status' => $result->status, // completed | failed
+                'resposta' => $result->content,
+                'erro' => $result->error,
+                'tokens' => $result->totalTokens(),
+            ])
+            ->throw();
+    }
+}
+```
+
+No Laravel 11 em diante, listeners em `app/Listeners` são registrados automaticamente. No Laravel 10, registre no `AppServiceProvider::boot()`:
+
+```php
+Event::listen(AgentCompleted::class, SendAgentResult::class);
+Event::listen(AgentFailed::class, SendAgentResult::class);
+```
+
+O `$event->result` (`AgentResult`) traz:
+
+| Campo | Conteúdo |
+|---|---|
+| `status` | `completed` ou `failed` |
+| `content` | resposta do agente (texto ou o JSON do `response_schema`) |
+| `sessionId` | id da sessão, já sem o sufixo de tenant |
+| `externalReference` | valor passado em `RunOptions(externalReference: ...)` |
+| `tokenUsage` / `totalTokens()` | consumo de tokens |
+| `error` / `errorCode` | mensagem traduzida e código, em caso de falha |
+| `raw` | corpo original enviado pelo serviço |
+| `toArray()` | formato padrão do pacote, o mesmo usado no repasse automático |
+
+Observações:
+
+- **Use `ShouldQueue`.** O listener roda dentro da requisição que o serviço faz ao webhook. Sem fila, um destino lento ou fora do ar atrasa ou quebra a resposta ao serviço.
+- **`viaWebhook`** é `false` quando o resultado veio de um `run()` síncrono, que você já recebe como retorno. Remova esse filtro se quiser enviar nos dois casos.
+- **O destino não precisa ser o `webhook_url`.** Use o `externalReference` para saber a quem o resultado pertence e envie para onde precisar. O `webhook_url` do agente continua necessário para ativar o modo assíncrono.
+- **Para aproveitar o job do pacote**, chame `ForwardToAgentWebhook::dispatch($url, $dados)` no listener.
 
 ## Painel e widget
 

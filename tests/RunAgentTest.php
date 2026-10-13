@@ -86,6 +86,7 @@ class RunAgentTest extends TestCase
 
     public function test_sync_option_forces_sync_and_forwards_to_agent_webhook(): void
     {
+        config(['agent-engine.webhook.forward' => true]);
         Bus::fake([ForwardToAgentWebhook::class]);
         $agent = $this->makeAgent(['webhook_url' => 'https://client.test/hook']);
 

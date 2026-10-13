@@ -198,9 +198,9 @@ class AgentEngine
             $this->events->dispatch(new AgentFailed($agent, $result, $viaWebhook));
         }
 
-        // Respostas síncronas com conteúdo e todos os retornos do webhook
-        // são repassados ao webhook_url do agente.
-        if ($agent->webhook_url && ($result->successful() || $viaWebhook)) {
+        // Com o repasse ativo, respostas síncronas com conteúdo e todos os
+        // retornos do webhook são enviados ao webhook_url do agente.
+        if (config('agent-engine.webhook.forward') && $agent->webhook_url && ($result->successful() || $viaWebhook)) {
             ForwardToAgentWebhook::dispatch($agent->webhook_url, $result->toArray());
         }
     }

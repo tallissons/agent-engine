@@ -25,8 +25,23 @@ class WebhookTest extends TestCase
             ->assertNotFound();
     }
 
+    public function test_does_not_forward_by_default(): void
+    {
+        Event::fake([AgentCompleted::class]);
+        Bus::fake([ForwardToAgentWebhook::class]);
+
+        $agent = $this->makeAgent(['webhook_url' => 'https://client.test/hook']);
+
+        $this->postJson('/agent-engine/webhook/webhook-secret', ['agent_id' => $agent->uuid, 'content' => 'Pronto'])
+            ->assertOk();
+
+        Event::assertDispatched(AgentCompleted::class, fn (AgentCompleted $e) => $e->viaWebhook);
+        Bus::assertNotDispatched(ForwardToAgentWebhook::class);
+    }
+
     public function test_handles_async_result_and_forwards(): void
     {
+        config(['agent-engine.webhook.forward' => true]);
         Event::fake([AgentCompleted::class, AgentWebhookReceived::class]);
         Bus::fake([ForwardToAgentWebhook::class]);
 

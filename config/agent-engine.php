@@ -81,6 +81,8 @@ return [
         'prefix' => 'agent-engine',
         'middleware' => ['api'],
         'route_name' => 'agent-engine.webhook',
+        // Repassa automaticamente o resultado ao webhook_url do agente.
+        'forward' => env('AGENT_ENGINE_WEBHOOK_FORWARD', false),
     ],
 
     /*
