@@ -6,6 +6,7 @@ use BuildAgents\AgentEngine\Data\RunOptions;
 use BuildAgents\AgentEngine\Events\AgentCompleted;
 use BuildAgents\AgentEngine\Events\AgentFailed;
 use BuildAgents\AgentEngine\Events\AgentRunning;
+use BuildAgents\AgentEngine\Exceptions\AgentEngineException;
 use BuildAgents\AgentEngine\Exceptions\AgentRunBlocked;
 use BuildAgents\AgentEngine\Facades\AgentEngine;
 use BuildAgents\AgentEngine\Jobs\ForwardToAgentWebhook;
@@ -82,6 +83,51 @@ class RunAgentTest extends TestCase
 
         Http::assertSent(fn (Request $request) => $request['response_mode'] === 'webhook'
             && $request['webhook_url'] === 'http://localhost/agent-engine/webhook/webhook-secret');
+    }
+
+    public function test_async_option_uses_webhook_without_agent_webhook_url(): void
+    {
+        $agent = $this->makeAgent();
+
+        Http::fake(['engine.test/*' => Http::response([
+            'status' => 'processing',
+            'session_id' => 'abc-tenant_'.$agent->owner_id,
+        ])]);
+
+        $result = AgentEngine::run($agent, 'Olá', 'abc', new RunOptions(async: true));
+
+        $this->assertTrue($result->isProcessing());
+        Http::assertSent(fn (Request $request) => $request['response_mode'] === 'webhook'
+            && $request['webhook_url'] === 'http://localhost/agent-engine/webhook/webhook-secret');
+    }
+
+    public function test_async_option_throws_when_webhook_unavailable(): void
+    {
+        config(['agent-engine.webhook.secret' => null]);
+        Http::fake();
+        $agent = $this->makeAgent();
+
+        $this->expectException(AgentEngineException::class);
+
+        try {
+            AgentEngine::run($agent, 'Olá', 'abc', new RunOptions(async: true));
+        } finally {
+            Http::assertNothingSent();
+        }
+    }
+
+    public function test_sync_and_async_together_throws(): void
+    {
+        Http::fake();
+        $agent = $this->makeAgent();
+
+        $this->expectException(AgentEngineException::class);
+
+        try {
+            AgentEngine::run($agent, 'Olá', 'abc', new RunOptions(sync: true, async: true));
+        } finally {
+            Http::assertNothingSent();
+        }
     }
 
     public function test_sync_option_forces_sync_and_forwards_to_agent_webhook(): void

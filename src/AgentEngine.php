@@ -80,7 +80,7 @@ class AgentEngine
         }
 
         $webhookUrl = $this->webhookUrl();
-        $responseMode = ($options->sync || empty($agent->webhook_url) || $webhookUrl === null) ? 'sync' : 'webhook';
+        $responseMode = $this->responseMode($agent, $options, $webhookUrl);
 
         $payload = $this->builder->build(
             $agent,
@@ -175,6 +175,32 @@ class AgentEngine
         }
 
         return route($routeName, ['secret' => $secret]);
+    }
+
+    /**
+     * Define se o serviço responde na hora (sync) ou depois, pelo webhook.
+     *
+     * @throws AgentEngineException quando sync e async são usados juntos ou async é pedido sem webhook disponível.
+     */
+    protected function responseMode(Agent $agent, RunOptions $options, ?string $webhookUrl): string
+    {
+        if ($options->sync && $options->async) {
+            throw new AgentEngineException('As opções sync e async não podem ser usadas juntas.');
+        }
+
+        if ($options->sync) {
+            return 'sync';
+        }
+
+        if ($options->async) {
+            if ($webhookUrl === null) {
+                throw new AgentEngineException('Modo assíncrono indisponível: webhook desativado ou sem AGENT_ENGINE_WEBHOOK_SECRET.');
+            }
+
+            return 'webhook';
+        }
+
+        return (empty($agent->webhook_url) || $webhookUrl === null) ? 'sync' : 'webhook';
     }
 
     protected function failure(Agent $agent, string $code, array $raw = [], ?string $sessionId = null): AgentResult

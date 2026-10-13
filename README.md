@@ -85,6 +85,7 @@ $result = AgentEngine::run($agent->uuid, $prompt, $sessionId, new RunOptions(
     files: $files,
     externalReference: 'pedido-123',
     sync: true, // força resposta síncrona (ex.: chat), mesmo com webhook_url
+    // async: true, // força resposta via webhook, mesmo sem webhook_url
 ));
 
 if ($result->successful()) {
@@ -101,8 +102,8 @@ return $result->toArray(); // mesmo formato do antigo AgentService::generate()
 
 ### Modo de resposta
 
-- **sync**: usado quando `sync: true`, quando o agente não tem `webhook_url` ou quando o webhook está desativado.
-- **webhook**: nos demais casos. O serviço chama `POST /agent-engine/webhook/{secret}` e o pacote dispara `AgentWebhookReceived` e depois `AgentCompleted` ou `AgentFailed`. Trate o resultado num listener desses eventos.
+- **sync**: usado quando `sync: true` ou, sem `async`, quando o agente não tem `webhook_url` ou o webhook está desativado.
+- **webhook**: usado quando `async: true` ou quando o agente tem `webhook_url`. Exige o webhook ativo e `AGENT_ENGINE_WEBHOOK_SECRET` definido; com `async: true` e o webhook indisponível, o `run()` lança `AgentEngineException` (o mesmo vale para `sync` e `async` juntos). O serviço chama `POST /agent-engine/webhook/{secret}` e o pacote dispara `AgentWebhookReceived` e depois `AgentCompleted` ou `AgentFailed`. Trate o resultado num listener desses eventos.
 
 Por padrão o pacote **não** envia nada ao `webhook_url` do agente. Com `AGENT_ENGINE_WEBHOOK_FORWARD=true`, o job `ForwardToAgentWebhook` envia ao `webhook_url`, pela fila configurada, todos os retornos do webhook e as respostas síncronas com conteúdo.
 
