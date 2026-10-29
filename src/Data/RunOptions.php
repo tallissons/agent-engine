@@ -10,6 +10,7 @@ class RunOptions
      * @param  bool  $sync  Força resposta síncrona mesmo com webhook_url (ex.: chat).
      * @param  array  $extra  Campos adicionais mesclados ao payload enviado.
      * @param  bool  $async  Força resposta via webhook mesmo sem webhook_url no agente (ex.: processamentos longos).
+     * @param  bool  $rasterizePdf  Converte PDFs em PNG (uma imagem por página) antes do envio.
      */
     public function __construct(
         public array $files = [],
@@ -17,6 +18,7 @@ class RunOptions
         public bool $sync = false,
         public array $extra = [],
         public bool $async = false,
+        public bool $rasterizePdf = false,
     ) {
     }
 }

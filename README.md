@@ -257,6 +257,24 @@ AgentEngine::run($agent, 'Resuma', $sessionId, new RunOptions(files: FileEncoder
 
 Lembre de ajustar `upload_max_filesize` e `post_max_size` no PHP se os arquivos forem grandes.
 
+#### Converter PDF em imagem
+
+Quando um PDF vai direto ao modelo, o provedor manda a camada de texto do PDF junto com a imagem da página, e o modelo tende a confiar no texto. Em documentos de identidade (CNH, RG) e PDFs com elementos de segurança, essa camada pode vir suja e o valor extraído sai errado. Nesses casos, peça a conversão na chamada:
+
+```php
+AgentEngine::run($agent, 'Extraia os dados', $sessionId, new RunOptions(
+    files: FileEncoder::encode([$pdf]),
+    rasterizePdf: true,
+));
+```
+
+Cada PDF vira um PNG por página (`cnh-p1.png`, `cnh-p2.png`...), e os outros arquivos passam intactos. A opção vem desligada por padrão e não vale para o playground e o widget.
+
+- Requer o `pdftoppm` (poppler) no servidor: `apt install poppler-utils`; no Windows, `scoop install poppler` ou `choco install poppler`.
+- Se a conversão falhar (por exemplo, sem o `pdftoppm`), `run` lança `AgentEngineException` e nada é enviado.
+- PDFs com mais de `max_pages` páginas vão **sem conversão**, como PDF, e o caso fica registrado em `Log::info`. Documentos longos costumam ser contratos e relatórios, em que a camada de texto ajuda.
+- Ajustes em `config('agent-engine.files.rasterize')`: `binary` (ou `AGENT_ENGINE_PDFTOPPM`), `dpi` (padrão 200) e `max_pages` (padrão 5).
+
 Como o widget funciona:
 - **Segurança:** o componente gera um token criptografado com o uuid do agente, e o endpoint (`POST /agent-engine/chat/send`) só aceita esse token. Ninguém consegue chamar outros agentes pelo uuid.
 - **Execução:** sempre em modo sync, e a conversa é mantida na sessão Laravel. "Nova conversa" começa uma sessão nova.

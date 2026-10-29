@@ -140,6 +140,13 @@ return [
         // por arquivo
         'max_size_kb' => 10240,
         'mimes' => ['pdf', 'png', 'jpg', 'jpeg', 'webp', 'txt', 'csv', 'docx', 'xlsx'],
+        // Usado quando RunOptions(rasterizePdf: true). Requer poppler-utils (pdftoppm).
+        'rasterize' => [
+            'binary' => env('AGENT_ENGINE_PDFTOPPM', 'pdftoppm'),
+            'dpi' => 200,
+            // PDFs com mais páginas que isso vão sem conversão (registrado em log).
+            'max_pages' => 5,
+        ],
     ],
 
     'assets' => [

@@ -6,12 +6,14 @@ use BuildAgents\AgentEngine\Contracts\InstructionDecorator;
 use BuildAgents\AgentEngine\Data\RunOptions;
 use BuildAgents\AgentEngine\Models\Agent;
 use BuildAgents\AgentEngine\Models\AgentTool;
+use BuildAgents\AgentEngine\Support\PdfRasterizer;
 use Illuminate\Support\Str;
 
 class AgentPayloadBuilder
 {
     public function __construct(
         protected InstructionDecorator $instructionDecorator,
+        protected PdfRasterizer $rasterizer,
     ) {
     }
 
@@ -29,7 +31,7 @@ class AgentPayloadBuilder
         return array_merge($this->definition($agent), [
             'prompt' => $prompt,
             'session_id' => $engineSessionId,
-            'files' => $options->files,
+            'files' => $options->rasterizePdf ? $this->rasterizer->rasterize($options->files) : $options->files,
             'agent_id' => $agent->uuid,
             'external_reference' => $options->externalReference,
             'response_mode' => $responseMode,
